@@ -19,7 +19,7 @@ npm install @sliderzz/typify
 ## Usage
 
 ```bash
-ts-typify <filename>
+typify <filename>
 ```
 
 This will create a new TypeScript file (`filename.ts`) in the same directory.
