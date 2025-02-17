@@ -1,0 +1,26 @@
+{
+  "name": "@sliderzz/typify",
+  "version": "1.0.0",
+  "description": "Convert JavaScript files to TypeScript",
+  "main": "src/index.js",
+  "bin": {
+    "typify": "./src/index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "typescript",
+    "javascript",
+    "converter"
+  ],
+  "author": "Shivam Trivedi",
+  "license": "MIT",
+  "dependencies": {
+    "@babel/generator": "^7.x.x",
+    "@babel/parser": "^7.x.x",
+    "@babel/traverse": "^7.x.x",
+    "commander": "^x.x.x",
+    "fs-extra": "^x.x.x"
+  }
+}
