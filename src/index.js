@@ -19,6 +19,36 @@ program
 function inferParameterType(param, functionPath) {
   const references = functionPath.scope.getBinding(param.name)?.referencePaths || [];
 
+  // Check if this is a callback function parameter
+  if (
+    functionPath.node.type === 'ArrowFunctionExpression' ||
+    functionPath.node.type === 'FunctionDeclaration'
+  ) {
+    // Special case for error parameter in callbacks
+    if (param.name === 'err' || param.name === 'error') {
+      return {
+        type: 'TSTypeAnnotation',
+        typeAnnotation: {
+          type: 'TSUnionType',
+          types: [
+            { type: 'TSTypeReference', typeName: { type: 'Identifier', name: 'Error' } },
+            { type: 'TSNullKeyword' },
+          ],
+        },
+      };
+    }
+    // Special case for 'next' middleware parameter
+    if (param.name === 'next') {
+      return {
+        type: 'TSTypeAnnotation',
+        typeAnnotation: {
+          type: 'TSTypeReference',
+          typeName: { type: 'Identifier', name: 'NextFunction' },
+        },
+      };
+    }
+  }
+
   for (const ref of references) {
     const parent = ref.parentPath;
 
@@ -55,9 +85,42 @@ function inferParameterType(param, functionPath) {
       return { type: 'TSTypeAnnotation', typeAnnotation: { type: 'TSBooleanKeyword' } };
     }
 
-    // Case 5: Object property access
+    // Case 5: Object property access (enhanced)
     if (parent.isMemberExpression()) {
-      return { type: 'TSTypeAnnotation', typeAnnotation: { type: 'TSObjectKeyword' } };
+      // Check if it's a request or response object
+      if (param.name === 'req' || param.name === 'request') {
+        return {
+          type: 'TSTypeAnnotation',
+          typeAnnotation: {
+            type: 'TSTypeReference',
+            typeName: { type: 'Identifier', name: 'Request' },
+          },
+        };
+      }
+      if (param.name === 'res' || param.name === 'response') {
+        return {
+          type: 'TSTypeAnnotation',
+          typeAnnotation: {
+            type: 'TSTypeReference',
+            typeName: { type: 'Identifier', name: 'Response' },
+          },
+        };
+      }
+      // Default object type for other cases
+      return {
+        type: 'TSTypeAnnotation',
+        typeAnnotation: {
+          type: 'TSTypeReference',
+          typeName: {
+            type: 'Identifier',
+            name: 'Record',
+          },
+          typeParameters: {
+            type: 'TSTypeParameterInstantiation',
+            params: [{ type: 'TSStringKeyword' }, { type: 'TSAnyKeyword' }],
+          },
+        },
+      };
     }
   }
 
@@ -131,7 +194,29 @@ async function convertFile(filePath) {
     const imports = new Set();
     const importNodes = [];
 
+    // Check if we need Express types
+    let needsExpressTypes = false;
+
     traverse(ast, {
+      Function(path) {
+        path.node.params.forEach((param) => {
+          if (param.type === 'Identifier') {
+            const paramName = param.name.toLowerCase();
+            if (
+              paramName === 'req' ||
+              paramName === 'request' ||
+              paramName === 'res' ||
+              paramName === 'response' ||
+              paramName === 'next'
+            ) {
+              needsExpressTypes = true;
+            }
+            if (!param.typeAnnotation) {
+              param.typeAnnotation = inferParameterType(param, path);
+            }
+          }
+        });
+      },
       VariableDeclaration(path) {
         handleRequireToImport(path, imports, importNodes);
 
@@ -143,18 +228,34 @@ async function convertFile(filePath) {
           }
         }
       },
-
-      Function(path) {
-        path.node.params.forEach((param) => {
-          if (param.type === 'Identifier' && !param.typeAnnotation) {
-            param.typeAnnotation = inferParameterType(param, path);
-          }
-        });
-      },
     });
 
-    const formattedImports = importNodes.map((node) => generate(node).code).join('\n\n');
+    // Add Express types import if needed
+    if (needsExpressTypes) {
+      importNodes.unshift({
+        type: 'ImportDeclaration',
+        specifiers: [
+          {
+            type: 'ImportSpecifier',
+            imported: { type: 'Identifier', name: 'Request' },
+            local: { type: 'Identifier', name: 'Request' },
+          },
+          {
+            type: 'ImportSpecifier',
+            imported: { type: 'Identifier', name: 'Response' },
+            local: { type: 'Identifier', name: 'Response' },
+          },
+          {
+            type: 'ImportSpecifier',
+            imported: { type: 'Identifier', name: 'NextFunction' },
+            local: { type: 'Identifier', name: 'NextFunction' },
+          },
+        ],
+        source: { type: 'StringLiteral', value: 'express' },
+      });
+    }
 
+    const formattedImports = importNodes.map((node) => generate(node).code).join('\n\n');
     const restOfCode = generate(ast, {
       retainLines: true,
       comments: true,
