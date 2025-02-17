@@ -1,9 +1,4 @@
-
-# Project Title
-
-A brief description of what this project does and who it's for
-
-# ts-typify
+# typify
 
 A command-line tool to convert JavaScript files to TypeScript with automatic type inference.
 
