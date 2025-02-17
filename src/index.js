@@ -194,6 +194,64 @@ function inferParameterType(param, functionPath) {
     };
   }
 
+  // Socket.IO patterns
+  if (paramName === 'socket' || paramName.includes('socket')) {
+    return {
+      type: 'TSTypeAnnotation',
+      typeAnnotation: {
+        type: 'TSTypeReference',
+        typeName: { type: 'Identifier', name: 'Socket' },
+      },
+    };
+  }
+
+  // JWT patterns
+  if (paramName === 'token' || paramName === 'jwt') {
+    return {
+      type: 'TSTypeAnnotation',
+      typeAnnotation: {
+        type: 'TSTypeReference',
+        typeName: { type: 'Identifier', name: 'JwtPayload' },
+      },
+    };
+  }
+
+  // Axios patterns
+  if (paramName.includes('axios') || paramName === 'client') {
+    return {
+      type: 'TSTypeAnnotation',
+      typeAnnotation: {
+        type: 'TSTypeReference',
+        typeName: { type: 'Identifier', name: 'AxiosInstance' },
+      },
+    };
+  }
+
+  if (paramName === 'response' && needsAxiosTypes) {
+    return {
+      type: 'TSTypeAnnotation',
+      typeAnnotation: {
+        type: 'TSTypeReference',
+        typeName: { type: 'Identifier', name: 'AxiosResponse' },
+        typeParameters: {
+          type: 'TSTypeParameterInstantiation',
+          params: [{ type: 'TSAnyKeyword' }],
+        },
+      },
+    };
+  }
+
+  // Fetch patterns
+  if (paramName.includes('fetch') || paramName === 'init') {
+    return {
+      type: 'TSTypeAnnotation',
+      typeAnnotation: {
+        type: 'TSTypeReference',
+        typeName: { type: 'Identifier', name: 'RequestInit' },
+      },
+    };
+  }
+
   return { type: 'TSTypeAnnotation', typeAnnotation: { type: 'TSAnyKeyword' } };
 }
 
@@ -270,6 +328,12 @@ async function convertFile(filePath) {
     let needsMongooseTypes = false;
     let needsSQLTypes = false;
 
+    // Add flags for web patterns
+    let needsSocketIOTypes = false;
+    let needsJWTTypes = false;
+    let needsAxiosTypes = false;
+    let needsFetchTypes = false;
+
     traverse(ast, {
       Function(path) {
         path.node.params.forEach((param) => {
@@ -315,6 +379,25 @@ async function convertFile(filePath) {
               paramName === 'pool'
             ) {
               needsSQLTypes = true;
+            }
+
+            // Socket.IO detection
+            if (paramName === 'socket' || paramName === 'io' || paramName.includes('socket')) {
+              needsSocketIOTypes = true;
+            }
+
+            // JWT detection
+            if (paramName === 'token' || paramName === 'jwt' || paramName.includes('token')) {
+              needsJWTTypes = true;
+            }
+
+            // HTTP Client detection
+            if (paramName.includes('axios') || paramName.includes('http')) {
+              needsAxiosTypes = true;
+            }
+
+            if (paramName.includes('fetch') || paramName === 'response') {
+              needsFetchTypes = true;
             }
 
             if (!param.typeAnnotation) {
@@ -431,6 +514,78 @@ async function convertFile(filePath) {
           },
         ],
         source: { type: 'StringLiteral', value: 'mysql2/promise' },
+      });
+    }
+
+    // Add web-related imports if needed
+    if (needsSocketIOTypes) {
+      importNodes.unshift({
+        type: 'ImportDeclaration',
+        specifiers: [
+          {
+            type: 'ImportSpecifier',
+            imported: { type: 'Identifier', name: 'Socket' },
+            local: { type: 'Identifier', name: 'Socket' },
+          },
+          {
+            type: 'ImportSpecifier',
+            imported: { type: 'Identifier', name: 'Server' },
+            local: { type: 'Identifier', name: 'Server' },
+          },
+        ],
+        source: { type: 'StringLiteral', value: 'socket.io' },
+      });
+    }
+
+    if (needsJWTTypes) {
+      importNodes.unshift({
+        type: 'ImportDeclaration',
+        specifiers: [
+          {
+            type: 'ImportSpecifier',
+            imported: { type: 'Identifier', name: 'JwtPayload' },
+            local: { type: 'Identifier', name: 'JwtPayload' },
+          },
+        ],
+        source: { type: 'StringLiteral', value: 'jsonwebtoken' },
+      });
+    }
+
+    if (needsAxiosTypes) {
+      importNodes.unshift({
+        type: 'ImportDeclaration',
+        specifiers: [
+          {
+            type: 'ImportSpecifier',
+            imported: { type: 'Identifier', name: 'AxiosInstance' },
+            local: { type: 'Identifier', name: 'AxiosInstance' },
+          },
+          {
+            type: 'ImportSpecifier',
+            imported: { type: 'Identifier', name: 'AxiosResponse' },
+            local: { type: 'Identifier', name: 'AxiosResponse' },
+          },
+        ],
+        source: { type: 'StringLiteral', value: 'axios' },
+      });
+    }
+
+    if (needsFetchTypes) {
+      importNodes.unshift({
+        type: 'ImportDeclaration',
+        specifiers: [
+          {
+            type: 'ImportSpecifier',
+            imported: { type: 'Identifier', name: 'RequestInit' },
+            local: { type: 'Identifier', name: 'RequestInit' },
+          },
+          {
+            type: 'ImportSpecifier',
+            imported: { type: 'Identifier', name: 'Response' },
+            local: { type: 'Identifier', name: 'Response' },
+          },
+        ],
+        source: { type: 'StringLiteral', value: 'node-fetch' },
       });
     }
 
