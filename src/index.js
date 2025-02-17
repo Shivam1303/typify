@@ -124,6 +124,76 @@ function inferParameterType(param, functionPath) {
     }
   }
 
+  // Database-related parameter type inference
+  const paramName = param.name.toLowerCase();
+
+  // MongoDB types
+  if (paramName === 'db' || paramName === 'database') {
+    return {
+      type: 'TSTypeAnnotation',
+      typeAnnotation: {
+        type: 'TSTypeReference',
+        typeName: { type: 'Identifier', name: 'Db' },
+      },
+    };
+  }
+
+  if (paramName === 'collection') {
+    return {
+      type: 'TSTypeAnnotation',
+      typeAnnotation: {
+        type: 'TSTypeReference',
+        typeName: { type: 'Identifier', name: 'Collection' },
+      },
+    };
+  }
+
+  // Mongoose types
+  if (paramName === 'model' || paramName.endsWith('model')) {
+    return {
+      type: 'TSTypeAnnotation',
+      typeAnnotation: {
+        type: 'TSTypeReference',
+        typeName: { type: 'Identifier', name: 'Model' },
+        typeParameters: {
+          type: 'TSTypeParameterInstantiation',
+          params: [{ type: 'TSAnyKeyword' }],
+        },
+      },
+    };
+  }
+
+  if (paramName === 'schema') {
+    return {
+      type: 'TSTypeAnnotation',
+      typeAnnotation: {
+        type: 'TSTypeReference',
+        typeName: { type: 'Identifier', name: 'Schema' },
+      },
+    };
+  }
+
+  // SQL types
+  if (paramName === 'connection' || paramName === 'conn') {
+    return {
+      type: 'TSTypeAnnotation',
+      typeAnnotation: {
+        type: 'TSTypeReference',
+        typeName: { type: 'Identifier', name: 'Connection' },
+      },
+    };
+  }
+
+  if (paramName === 'pool') {
+    return {
+      type: 'TSTypeAnnotation',
+      typeAnnotation: {
+        type: 'TSTypeReference',
+        typeName: { type: 'Identifier', name: 'Pool' },
+      },
+    };
+  }
+
   return { type: 'TSTypeAnnotation', typeAnnotation: { type: 'TSAnyKeyword' } };
 }
 
@@ -194,14 +264,19 @@ async function convertFile(filePath) {
     const imports = new Set();
     const importNodes = [];
 
-    // Check if we need Express types
+    // Add flags for database types
     let needsExpressTypes = false;
+    let needsMongoDBTypes = false;
+    let needsMongooseTypes = false;
+    let needsSQLTypes = false;
 
     traverse(ast, {
       Function(path) {
         path.node.params.forEach((param) => {
           if (param.type === 'Identifier') {
             const paramName = param.name.toLowerCase();
+
+            // Express detection
             if (
               paramName === 'req' ||
               paramName === 'request' ||
@@ -211,6 +286,37 @@ async function convertFile(filePath) {
             ) {
               needsExpressTypes = true;
             }
+
+            // MongoDB detection
+            if (
+              paramName === 'db' ||
+              paramName === 'database' ||
+              paramName === 'collection' ||
+              paramName === 'cursor'
+            ) {
+              needsMongoDBTypes = true;
+            }
+
+            // Mongoose detection
+            if (
+              paramName === 'model' ||
+              paramName === 'schema' ||
+              paramName === 'document' ||
+              paramName.endsWith('model')
+            ) {
+              needsMongooseTypes = true;
+            }
+
+            // SQL detection
+            if (
+              paramName === 'connection' ||
+              paramName === 'conn' ||
+              paramName === 'query' ||
+              paramName === 'pool'
+            ) {
+              needsSQLTypes = true;
+            }
+
             if (!param.typeAnnotation) {
               param.typeAnnotation = inferParameterType(param, path);
             }
@@ -252,6 +358,79 @@ async function convertFile(filePath) {
           },
         ],
         source: { type: 'StringLiteral', value: 'express' },
+      });
+    }
+
+    // Add database-related imports if needed
+    if (needsMongoDBTypes) {
+      importNodes.unshift({
+        type: 'ImportDeclaration',
+        specifiers: [
+          {
+            type: 'ImportSpecifier',
+            imported: { type: 'Identifier', name: 'Db' },
+            local: { type: 'Identifier', name: 'Db' },
+          },
+          {
+            type: 'ImportSpecifier',
+            imported: { type: 'Identifier', name: 'Collection' },
+            local: { type: 'Identifier', name: 'Collection' },
+          },
+          {
+            type: 'ImportSpecifier',
+            imported: { type: 'Identifier', name: 'Document' },
+            local: { type: 'Identifier', name: 'Document' },
+          },
+        ],
+        source: { type: 'StringLiteral', value: 'mongodb' },
+      });
+    }
+
+    if (needsMongooseTypes) {
+      importNodes.unshift({
+        type: 'ImportDeclaration',
+        specifiers: [
+          {
+            type: 'ImportSpecifier',
+            imported: { type: 'Identifier', name: 'Model' },
+            local: { type: 'Identifier', name: 'Model' },
+          },
+          {
+            type: 'ImportSpecifier',
+            imported: { type: 'Identifier', name: 'Schema' },
+            local: { type: 'Identifier', name: 'Schema' },
+          },
+          {
+            type: 'ImportSpecifier',
+            imported: { type: 'Identifier', name: 'Document' },
+            local: { type: 'Identifier', name: 'Document' },
+          },
+        ],
+        source: { type: 'StringLiteral', value: 'mongoose' },
+      });
+    }
+
+    if (needsSQLTypes) {
+      importNodes.unshift({
+        type: 'ImportDeclaration',
+        specifiers: [
+          {
+            type: 'ImportSpecifier',
+            imported: { type: 'Identifier', name: 'Connection' },
+            local: { type: 'Identifier', name: 'Connection' },
+          },
+          {
+            type: 'ImportSpecifier',
+            imported: { type: 'Identifier', name: 'Pool' },
+            local: { type: 'Identifier', name: 'Pool' },
+          },
+          {
+            type: 'ImportSpecifier',
+            imported: { type: 'Identifier', name: 'Query' },
+            local: { type: 'Identifier', name: 'Query' },
+          },
+        ],
+        source: { type: 'StringLiteral', value: 'mysql2/promise' },
       });
     }
 
