@@ -4,7 +4,7 @@ A command-line tool to convert JavaScript files to TypeScript with automatic typ
 
 ## Features
 
-- Converts JavaScript files to TypeScript
+- Converts JavaScript files to TypeScript by just running the command.
 - Automatically infers basic types for function parameters
 - Converts `var` declarations to `let` or `const`
 - Transforms CommonJS `require()` to ES6 `import` statements
