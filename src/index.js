@@ -250,6 +250,88 @@ function inferParameterType(param, functionPath) {
     };
   }
 
+  // Jest testing patterns
+  if (param.name === 'mock' || param.name.startsWith('jest')) {
+    return {
+      type: 'TSTypeAnnotation',
+      typeAnnotation: {
+        type: 'TSTypeReference',
+        typeName: { type: 'Identifier', name: 'jest.Mock' },
+        typeParameters: {
+          type: 'TSTypeParameterInstantiation',
+          params: [
+            { type: 'TSAnyKeyword' },
+            { type: 'TSArrayType', elementType: { type: 'TSAnyKeyword' } }
+          ]
+        }
+      }
+    };
+  }
+
+  // Webpack configuration detection
+  if (param.name === 'webpackConfig' || param.name === 'config') {
+    return {
+      type: 'TSTypeAnnotation',
+      typeAnnotation: {
+        type: 'TSTypeReference',
+        typeName: { type: 'Identifier', name: 'webpack.Configuration' }
+      }
+    };
+  }
+
+  // Validation libraries (Joi/Yup)
+  if (param.name === 'schema' || param.name === 'validation') {
+    return {
+      type: 'TSTypeAnnotation',
+      typeAnnotation: {
+        type: 'TSTypeReference',
+        typeName: { type: 'Identifier', name: 'Joi.Schema' }
+      }
+    };
+  }
+
+  // Node.js filesystem patterns
+  if (param.name === 'fs' || param.name === 'fileSystem') {
+    return {
+      type: 'TSTypeAnnotation',
+      typeAnnotation: {
+        type: 'TSTypeReference',
+        typeName: { type: 'Identifier', name: 'typeof fs' }
+      }
+    };
+  }
+
+  // Common utility libraries
+  if (param.name === '_' || param.name === 'lodash') {
+    return {
+      type: 'TSTypeAnnotation',
+      typeAnnotation: {
+        type: 'TSTypeReference',
+        typeName: { type: 'Identifier', name: 'LoDashStatic' }
+      }
+    };
+  }
+
+  // Date handling with string/number timestamps
+  if (param.name === 'timestamp' || param.name === 'isoDate') {
+    const parent = functionPath.parentPath;
+    const usesMilliseconds = parent.node.body.body.some(n => 
+      n.expression?.callee?.property?.name === 'getTime'
+    );
+    
+    return {
+      type: 'TSTypeAnnotation',
+      typeAnnotation: {
+        type: 'TSUnionType',
+        types: [
+          { type: 'TSNumberKeyword' },
+          { type: 'TSStringKeyword' },
+          { type: 'TSTypeReference', typeName: { type: 'Identifier', name: 'Date' } }
+        ]
+      }
+    };
+  }
+
   return { type: 'TSTypeAnnotation', typeAnnotation: { type: 'TSAnyKeyword' } };
 }
 
@@ -332,6 +414,12 @@ async function convertFile(filePath) {
     let needsAxiosTypes = false;
     let needsFetchTypes = false;
 
+    // Add new detection flags
+    let needsJestTypes = false;
+    let needsWebpackTypes = false;
+    let needsValidationTypes = false;
+    let needsLodashTypes = false;
+
     traverse(ast, {
       Function(path) {
         path.node.params.forEach((param) => {
@@ -396,6 +484,26 @@ async function convertFile(filePath) {
 
             if (paramName.includes('fetch') || paramName === 'response') {
               needsFetchTypes = true;
+            }
+
+            // Jest detection
+            if (paramName === 'mock' || paramName.startsWith('jest')) {
+              needsJestTypes = true;
+            }
+
+            // Webpack detection
+            if (paramName === 'webpackconfig' || paramName === 'config') {
+              needsWebpackTypes = true;
+            }
+
+            // Validation detection
+            if (paramName === 'schema' || paramName === 'validation') {
+              needsValidationTypes = true;
+            }
+
+            // Lodash detection
+            if (paramName === '_' || paramName === 'lodash') {
+              needsLodashTypes = true;
             }
 
             if (!param.typeAnnotation) {
@@ -584,6 +692,55 @@ async function convertFile(filePath) {
           },
         ],
         source: { type: 'StringLiteral', value: 'node-fetch' },
+      });
+    }
+
+    // Add new imports
+    if (needsJestTypes) {
+      importNodes.unshift({
+        type: 'ImportDeclaration',
+        specifiers: [{
+          type: 'ImportSpecifier',
+          imported: { type: 'Identifier', name: 'jest' },
+          local: { type: 'Identifier', name: 'jest' }
+        }],
+        source: { type: 'StringLiteral', value: '@types/jest' }
+      });
+    }
+
+    if (needsWebpackTypes) {
+      importNodes.unshift({
+        type: 'ImportDeclaration',
+        specifiers: [{
+          type: 'ImportSpecifier', 
+          imported: { type: 'Identifier', name: 'Configuration' },
+          local: { type: 'Identifier', name: 'Configuration' }
+        }],
+        source: { type: 'StringLiteral', value: 'webpack' }
+      });
+    }
+
+    if (needsValidationTypes) {
+      importNodes.unshift({
+        type: 'ImportDeclaration',
+        specifiers: [{
+          type: 'ImportSpecifier',
+          imported: { type: 'Identifier', name: 'Schema' },
+          local: { type: 'Identifier', name: 'Schema' }
+        }],
+        source: { type: 'StringLiteral', value: 'joi' }
+      });
+    }
+
+    if (needsLodashTypes) {
+      importNodes.unshift({
+        type: 'ImportDeclaration',
+        specifiers: [{
+          type: 'ImportSpecifier',
+          imported: { type: 'Identifier', name: 'LoDashStatic' },
+          local: { type: 'Identifier', name: '_' }
+        }],
+        source: { type: 'StringLiteral', value: 'lodash' }
       });
     }
 
