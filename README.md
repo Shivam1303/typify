@@ -10,9 +10,32 @@ A command-line tool to convert JavaScript files to TypeScript with automatic typ
 - Transforms CommonJS `require()` to ES6 `import` statements
 - Preserves existing code structure and comments
 - Smart type inference for common patterns:
-  - Database patterns (MongoDB, Mongoose, SQL)
-  - Web patterns (Express, Socket.IO, JWT, Axios)
-  - Basic type inference (string, number, boolean)
+  - **Core Patterns**:
+    - Basic types (string, number, boolean)
+    - Array methods → `Array<T>`
+    - Object patterns → `Record<string, any>`
+    - Error handling → `Error | null`
+  - **Web Development**:
+    - Express (Request, Response, NextFunction)
+    - Socket.IO (Socket, Server)
+    - JWT (JwtPayload)
+    - React (FC, ReactNode)
+    - Webpack (Configuration)
+    - Axios (AxiosInstance, AxiosResponse)
+  - **Databases**:
+    - MongoDB (Db, Collection, Document)
+    - Mongoose (Model, Schema)
+    - SQL (Connection, Pool, Query)
+  - **Testing**:
+    - Jest (Mock, SpyInstance)
+  - **Utilities**:
+    - Lodash (LoDashStatic)
+    - Date handling (Date/string/number)
+    - Validation (Joi/Yup schemas)
+    - Node.js FS (typeof fs)
+  - **Cloud/Infra**:
+    - AWS SDK (S3, DynamoDB)
+    - Node.js streams (Readable/Writable)
 
 ## Installation
 
@@ -33,9 +56,10 @@ This will create a new TypeScript file (`filename.ts`) in the same directory.
 ### Basic Function Conversion
 
 Input (`example.js`):
+
 ```javascript
 function greet(name) {
-  return "Hello " + name;
+  return 'Hello ' + name;
 }
 function calculate(value) {
   return value * 2;
@@ -46,9 +70,10 @@ function processUser(user) {
 ```
 
 Output (`example.ts`):
+
 ```typescript
 function greet(name: string) {
-  return "Hello " + name;
+  return 'Hello ' + name;
 }
 function calculate(value: number) {
   return value * 2;
@@ -61,6 +86,7 @@ function processUser(user: Record<string, any>) {
 ### Database Pattern Detection
 
 Input (`db-example.js`):
+
 ```javascript
 async function findUsers(db, query) {
   const collection = db.collection('users');
@@ -69,6 +95,7 @@ async function findUsers(db, query) {
 ```
 
 Output (`db-example.ts`):
+
 ```typescript
 import { Db, Collection } from 'mongodb';
 
@@ -81,6 +108,7 @@ async function findUsers(db: Db, query: Record<string, any>) {
 ### Web Pattern Detection
 
 Input (`web-example.js`):
+
 ```javascript
 function handleSocket(socket) {
   socket.on('message', (data) => {
@@ -94,6 +122,7 @@ async function verifyToken(token) {
 ```
 
 Output (`web-example.ts`):
+
 ```typescript
 import { Socket } from 'socket.io';
 import { JwtPayload } from 'jsonwebtoken';
@@ -109,32 +138,111 @@ async function verifyToken(token: string): Promise<JwtPayload> {
 }
 ```
 
-## Type Inference
+### React Component Detection
 
-The tool automatically infers types based on:
+Input (`component.js`):
 
-### Basic Types
-- String type: When used in string concatenation
-- Number type: When used in mathematical operations
-- Boolean type: When used in conditional statements
-- Array type: When array methods are used
-- Any type: When type cannot be determined
+```javascript
+function Button(props) {
+  return <button>{props.children}</button>;
+}
+```
 
-### Database Patterns
-- MongoDB: `Db`, `Collection`, `Document`
-- Mongoose: `Model`, `Schema`, `Document`
-- SQL: `Connection`, `Pool`, `Query`
+Output (`component.tsx`):
 
-### Web Patterns
-- Express: `Request`, `Response`, `NextFunction`
-- Socket.IO: `Socket`, `Server`
-- JWT: `JwtPayload`
-- HTTP Clients: `AxiosInstance`, `AxiosResponse`, `RequestInit`
+```typescript
+import { FC } from 'react';
+
+const Button: FC<{ children?: ReactNode }> = (props) => {
+  return <button>{props.children}</button>;
+};
+```
+
+### Jest Test Patterns
+
+Input (`test.js`):
+
+```javascript
+test('user login', async (mock) => {
+  const user = mock.user.create();
+  await user.login();
+});
+```
+
+Output (`test.ts`):
+
+```typescript
+import { Mock } from 'jest';
+
+test('user login', async (mock: jest.Mock) => {
+  const user = mock.user.create();
+  await user.login();
+});
+```
+
+### Webpack Configuration
+
+Input (`webpack.config.js`):
+
+```javascript
+module.exports = (env) => ({
+  entry: './src/index.js',
+  mode: env.production ? 'production' : 'development',
+});
+```
+
+Output (`webpack.config.ts`):
+
+```typescript
+import { Configuration } from 'webpack';
+
+export default (env: Record<string, boolean>): Configuration => ({
+  entry: './src/index.js',
+  mode: env.production ? 'production' : 'development',
+});
+```
+
+## Type Inference Improvements
+
+### React Components
+
+- Detects `props`/`state` parameters
+- Adds `FC` type with children prop
+- Infers component return types
+
+### Testing Frameworks
+
+- Recognizes Jest mock functions
+- Types test/mock parameters
+- Adds proper async test typing
+
+### Infrastructure Patterns
+
+- AWS service client detection (S3, DynamoDB)
+- Node.js stream type inference
+
+### Error Handling
+
+- Detects `error`/`err` parameters
+- Adds `Error | null` union type
+- Infers try/catch error types
+
+### Database Operations
+
+- Recognizes MongoDB collection patterns
+- Types Mongoose models and schemas
+- Infers SQL connection pools
+
+### HTTP Clients
+
+- Detects Axios instance usage
+- Types fetch API parameters
+- Infers response data shapes
 
 ## Limitations
 
-- Complex type inference might require manual refinement
-- Generic types are not automatically inferred
-- Custom types need to be added manually
-- Union types are not automatically detected
-
+- Complex generic types may need manual annotation
+- AWS SDK v2 requires separate `@types/aws-sdk`
+- Custom Express middleware types might need refinement
+- Axios interceptors may require additional typing
+- Date format detection has basic pattern matching

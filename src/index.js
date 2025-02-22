@@ -332,6 +332,40 @@ function inferParameterType(param, functionPath) {
     };
   }
 
+  // TypeORM patterns
+  if (param.name === 'repository' || param.name.endsWith('repo')) {
+    return {
+      type: 'TSTypeAnnotation',
+      typeAnnotation: {
+        type: 'TSTypeReference',
+        typeName: { type: 'Identifier', name: 'Repository' },
+        typeParameters: {
+          type: 'TSTypeParameterInstantiation',
+          params: [{ type: 'TSTypeReference', typeName: { type: 'Identifier', name: 'Entity' } }]
+        }
+      }
+    };
+  }
+
+  // Sequelize patterns
+  if (param.name === 'model' || param.name.endsWith('Model')) {
+    return {
+      type: 'TSTypeAnnotation',
+      typeAnnotation: {
+        type: 'TSTypeReference',
+        typeName: { type: 'Identifier', name: 'Model' },
+        typeParameters: {
+          type: 'TSTypeParameterInstantiation',
+          params: [
+            { type: 'TSAnyKeyword' },
+            { type: 'TSAnyKeyword' },
+            { type: 'TSAnyKeyword' }
+          ]
+        }
+      }
+    };
+  }
+
   return { type: 'TSTypeAnnotation', typeAnnotation: { type: 'TSAnyKeyword' } };
 }
 
@@ -420,6 +454,10 @@ async function convertFile(filePath) {
     let needsValidationTypes = false;
     let needsLodashTypes = false;
 
+    // Add flags
+    let needsTypeORMTypes = false;
+    let needsSequelizeTypes = false;
+
     traverse(ast, {
       Function(path) {
         path.node.params.forEach((param) => {
@@ -504,6 +542,16 @@ async function convertFile(filePath) {
             // Lodash detection
             if (paramName === '_' || paramName === 'lodash') {
               needsLodashTypes = true;
+            }
+
+            // TypeORM detection
+            if (paramName === 'repository' || paramName.endsWith('repo')) {
+              needsTypeORMTypes = true;
+            }
+
+            // Sequelize detection
+            if (paramName === 'model' || paramName.endsWith('model')) {
+              needsSequelizeTypes = true;
             }
 
             if (!param.typeAnnotation) {
@@ -741,6 +789,27 @@ async function convertFile(filePath) {
           local: { type: 'Identifier', name: '_' }
         }],
         source: { type: 'StringLiteral', value: 'lodash' }
+      });
+    }
+
+    if (needsTypeORMTypes) {
+      importNodes.unshift({
+        type: 'ImportDeclaration',
+        specifiers: [
+          { type: 'ImportSpecifier', imported: { type: 'Identifier', name: 'Repository' }, local: { type: 'Identifier', name: 'Repository' } },
+          { type: 'ImportSpecifier', imported: { type: 'Identifier', name: 'Entity' }, local: { type: 'Identifier', name: 'Entity' } }
+        ],
+        source: { type: 'StringLiteral', value: 'typeorm' }
+      });
+    }
+
+    if (needsSequelizeTypes) {
+      importNodes.unshift({
+        type: 'ImportDeclaration',
+        specifiers: [
+          { type: 'ImportSpecifier', imported: { type: 'Identifier', name: 'Model' }, local: { type: 'Identifier', name: 'Model' } }
+        ],
+        source: { type: 'StringLiteral', value: 'sequelize' }
       });
     }
 
