@@ -19,12 +19,10 @@ program
 function inferParameterType(param, functionPath) {
   const references = functionPath.scope.getBinding(param.name)?.referencePaths || [];
 
-  // Check if this is a callback function parameter
   if (
     functionPath.node.type === 'ArrowFunctionExpression' ||
     functionPath.node.type === 'FunctionDeclaration'
   ) {
-    // Special case for error parameter in callbacks
     if (param.name === 'err' || param.name === 'error') {
       return {
         type: 'TSTypeAnnotation',
