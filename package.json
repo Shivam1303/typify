@@ -1,6 +1,6 @@
 {
   "name": "@sliderzz/typify",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Convert JavaScript files to TypeScript",
   "main": "src/index.js",
   "bin": {
@@ -12,7 +12,14 @@
   "keywords": [
     "typescript",
     "javascript",
-    "converter"
+    "converter",
+    "web",
+    "nodejs",
+    "react",
+    "nextjs",
+    "web",
+    "frontend",
+    "backend"
   ],
   "author": "Shivam Trivedi",
   "license": "MIT",
