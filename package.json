@@ -1,6 +1,6 @@
 {
   "name": "@sliderzz/typify",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Convert JavaScript files to TypeScript",
   "main": "src/index.js",
   "bin": {

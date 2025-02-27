@@ -246,3 +246,7 @@ export default (env: Record<string, boolean>): Configuration => ({
 - Custom Express middleware types might need refinement
 - Axios interceptors may require additional typing
 - Date format detection has basic pattern matching
+
+Do try it out! I'm always looking for feedback and suggestions.
+Or let's collaborate for any cool stuff!
+Reach out to me on [linkedin](https://www.linkedin.com/in/shivam-trivedi-ui/)
