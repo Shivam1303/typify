@@ -1,4 +1,4 @@
-# typify
+# Typify
 
 A command-line tool to convert JavaScript files to TypeScript with automatic type inference.
 
